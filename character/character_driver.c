@@ -3,12 +3,15 @@
 #include<linux/cdev.h>
 #include<linux/types.h>
 #include<linux/fs.h>
+#include<linux/slab.h>
 
+#define mem_size 1024
 
 static struct cdev *my_cdev;
 static struct class *my_cdev_class;
 static dev_t hello_char;
 static struct device *my_cdev_device;
+char *kernel_buffer;
 
 static int hello_open(struct inode *inode, struct file *filp)
 {
@@ -18,14 +21,22 @@ static int hello_open(struct inode *inode, struct file *filp)
 
 ssize_t hello_read(struct file *filp, char __user *buf, size_t len, loff_t *off)
 {
-    printk("In hello_read\n");
-    return 0;
+    if( copy_to_user(buf, kernel_buffer, mem_size) )
+    {
+        printk("Unable to read\n");
+    }
+    printk("Able to read\n");
+    return mem_size;
 }
 
 ssize_t hello_write(struct file *filp, const char __user *buf, size_t len, loff_t *off)
 {
-    printk("In hello_write\n");
-    return 0;
+    if( copy_from_user(kernel_buffer, buf, len) )
+    {
+        printk("Unable to write\n");
+    }
+    printk("able to write\n");
+    return len;
 }
 
 static int hello_release(struct inode* inode, struct file *filp)
@@ -84,6 +95,15 @@ static int __init start_character(void)
         printk(KERN_WARNING"device create failed\n");
         return -1;
     }
+    
+    //Allocating memory for kernel_buffer from kernel ram (linux/slab.h)
+    kernel_buffer = kmalloc(mem_size, GFP_KERNEL);
+    if(!kernel_buffer){
+        printk(KERN_WARNING"cannot allocate memory for kernel variable");
+        return -1;
+    }
+
+    strcpy(kernel_buffer, "Hello_world");
 
     printk("Character driver initialization successfull!\n");
 	return 0;	
