@@ -6,7 +6,9 @@
 
 
 static struct cdev *my_cdev;
+static struct class *my_cdev_class;
 static dev_t hello_char;
+static struct device *my_cdev_device;
 
 static int hello_open(struct inode *inode, struct file *filp)
 {
@@ -45,6 +47,7 @@ static int __init start_character(void)
 	int ret;
 
 	//registering the device with dynamic allocation of major and minor numbers
+    //require linux/fs.h header for this functions to work.
 	ret = alloc_chrdev_region(&hello_char, 0, 1, "character_driver");
 	if(ret != 0){
 		printk(KERN_WARNING"alloc_chrdev_region is failed!\n");
@@ -59,12 +62,28 @@ static int __init start_character(void)
         return -1;
     }
     
-    //initialize the cdev data structure
+    //initialie the cdev data structure with the fileoperations
+    cdev_init(my_cdev, &my_cdev_fops);
+
+    //initialize the owner field of the owner module
     my_cdev->owner = THIS_MODULE;
-    my_cdev->ops   = &my_cdev_fops;
 
     //Add the character device to the kernel
     cdev_add(my_cdev, hello_char, 1);
+
+    //Create struct class
+    my_cdev_class =  class_create(THIS_MODULE, "my_cdev_class");
+    if(!my_cdev_class){
+        printk(KERN_WARNING,"class create failed");
+        return -1;
+    }
+
+    //Create a device node
+    my_cdev_device = device_create(my_cdev_class, NULL, hello_char, NULL, "my_cdev");
+    if(IS_ERR(my_cdev_device)){
+        printk(KERN_WARNING"device create failed\n");
+        return -1;
+    }
 
     printk("Character driver initialization successfull!\n");
 	return 0;	
@@ -77,6 +96,12 @@ static void __exit exit_character(void)
 
     //unregister the character driver
     unregister_chrdev_region(hello_char,1);
+
+    //Destroy the device
+    device_destroy(my_cdev_class,my_cdev_device);
+
+    //Destroy the class
+    class_destroy(my_cdev_class);
 
     printk("Character driver is exited successfully!\n");
 }
