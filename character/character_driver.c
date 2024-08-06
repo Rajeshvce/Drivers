@@ -4,14 +4,18 @@
 #include<linux/types.h>
 #include<linux/fs.h>
 #include<linux/slab.h>
+#include<linux/ioctl.h>
 
 #define mem_size 1024
+#define READ_CHARACTER_DRIVER _IOR('c','1', int*)
+#define WRITE_CHARACTER_DRIVER _IOW('c','2',int*)
 
 static struct cdev *my_cdev;
 static struct class *my_cdev_class;
 static dev_t hello_char;
 static struct device *my_cdev_device;
 char *kernel_buffer;
+int val = 0;
 
 static int hello_open(struct inode *inode, struct file *filp)
 {
@@ -45,26 +49,51 @@ static int hello_release(struct inode* inode, struct file *filp)
     return 0;
 }
 
+static long hello_ioctl(struct file *fp, unsigned int cmd, unsigned long arg)
+{
+    switch(cmd){
+        case READ_CHARACTER_DRIVER:
+            if(copy_to_user((int*)arg, &val, sizeof(val)))
+            {
+                printk("Unable to read the character driver");
+            }
+            printk("val = %d\n", val);
+            break;
+        case WRITE_CHARACTER_DRIVER:
+            if(copy_from_user(&val,(int*) arg, sizeof(val)))
+            {
+                printk("Unable to write the character driver");
+            }
+            printk("value = %d\n", val);
+            break;
+        default:
+            printk("enter a valid argument");
+            break;
+    }
+    return 0;
+}
+
 static struct file_operations my_cdev_fops = {
-    .owner   = THIS_MODULE,
-    .open    = hello_open,
-    .read    = hello_read,
-    .write   = hello_write,
-    .release = hello_release,
+    .owner          = THIS_MODULE,
+    .open           = hello_open,
+    .read           = hello_read,
+    .write          = hello_write,
+    .release        = hello_release,
+    .unlocked_ioctl = hello_ioctl,
 };
 
 static int __init start_character(void)
 {
-	int ret;
+     int ret;
 
-	//registering the device with dynamic allocation of major and minor numbers
-    //require linux/fs.h header for this functions to work.
-	ret = alloc_chrdev_region(&hello_char, 0, 1, "character_driver");
-	if(ret != 0){
-		printk(KERN_WARNING"alloc_chrdev_region is failed!\n");
-		return -1;
-	}
-    
+     //registering the device with dynamic allocation of major and minor numbers
+     //require linux/fs.h header for this functions to work.
+     ret = alloc_chrdev_region(&hello_char, 0, 1, "character_driver");
+     if(ret != 0){
+            printk(KERN_WARNING"alloc_chrdev_region is failed!\n");
+            return -1;
+     }
+
     //Kernel uses structure of type struct cdev to represent character devices internally.
     //allocate the cdev structure
     my_cdev = cdev_alloc();
@@ -72,7 +101,7 @@ static int __init start_character(void)
         printk(KERN_WARNING"cdev_alloc failed");
         return -1;
     }
-    
+
     //initialie the cdev data structure with the fileoperations
     cdev_init(my_cdev, &my_cdev_fops);
 
@@ -95,7 +124,7 @@ static int __init start_character(void)
         printk(KERN_WARNING"device create failed\n");
         return -1;
     }
-    
+
     //Allocating memory for kernel_buffer from kernel ram (linux/slab.h)
     kernel_buffer = kmalloc(mem_size, GFP_KERNEL);
     if(!kernel_buffer){
@@ -106,22 +135,22 @@ static int __init start_character(void)
     strcpy(kernel_buffer, "Hello_world");
 
     printk("Character driver initialization successfull!\n");
-	return 0;	
+        return 0;
 }
 
 static void __exit exit_character(void)
 {
-    //delete the created cdev structure
-    cdev_del(my_cdev);
-
-    //unregister the character driver
-    unregister_chrdev_region(hello_char,1);
-
     //Destroy the device
     device_destroy(my_cdev_class,my_cdev_device);
 
     //Destroy the class
     class_destroy(my_cdev_class);
+
+    //delete the created cdev structure
+    cdev_del(my_cdev);
+
+    //unregister the character driver
+    unregister_chrdev_region(hello_char,1);
 
     printk("Character driver is exited successfully!\n");
 }
