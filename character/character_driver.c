@@ -7,7 +7,7 @@
 #include<linux/ioctl.h>
 
 #define mem_size 1024
-#define READ_CHARACTER_DRIVER _IOR('c','1', int*)
+#define READ_CHARACTER_DRIVER  _IOR('c','1', int*)
 #define WRITE_CHARACTER_DRIVER _IOW('c','2',int*)
 
 static struct cdev *my_cdev;
@@ -63,6 +63,23 @@ static long hello_ioctl(struct file *fp, unsigned int cmd, unsigned long arg)
             if(copy_from_user(&val,(int*) arg, sizeof(val)))
             {
                 printk("Unable to write the character driver");
+            }
+            printk("value = %d\n", val);
+            break;
+        // put_user and get_user  functions are similar to above copy_to_user and copy_from_user
+        // But while using put_user we need to use the access_ok function to verify whether the
+        // user space address we have given is valid or not
+        case 0:
+            if(put_user(val, (int *) arg))
+            {
+                printk("Unable to write to user space");
+            }
+            printk("value = %d\n", val);
+            break;
+        case 1:
+            if(get_user(val, (int *) arg))
+            {
+                printk("Unable to read from the user space");
             }
             printk("value = %d\n", val);
             break;
