@@ -1,10 +1,12 @@
-#include<linux/init.h>
-#include<linux/module.h>
-#include<linux/cdev.h>
-#include<linux/types.h>
-#include<linux/fs.h>
-#include<linux/slab.h>
-#include<linux/ioctl.h>
+#include <linux/init.h>
+#include <linux/module.h>
+#include <linux/cdev.h>
+#include <linux/types.h>
+#include <linux/fs.h>
+#include <linux/slab.h>
+#include <linux/ioctl.h>
+#include <linux/wait.h>     // For wait queues
+#include <linux/sched.h>    // For current process info and sleep functions
 
 #define mem_size 1024
 #define READ_CHARACTER_DRIVER  _IOR('c','1', int*)
@@ -17,6 +19,15 @@ static struct device *my_cdev_device;
 char *kernel_buffer;
 int val = 0;
 
+// Declare and initialize a wait queue
+static DECLARE_WAIT_QUEUE_HEAD(wq);
+static int flag = 0;
+/*
+Dynamical allocation for wait queue
+wait_queue_head_t my_queue;
+init_waitqueue_head(&my_queue);
+*/
+
 static int hello_open(struct inode *inode, struct file *filp)
 {
     printk("Hello_open is opened\n");
@@ -25,16 +36,38 @@ static int hello_open(struct inode *inode, struct file *filp)
 
 ssize_t hello_read(struct file *filp, char __user *buf, size_t len, loff_t *off)
 {
+    // Log the process ID and name that is about to sleep
+    printk(KERN_INFO "process %i (%s) going to sleep\n", current->pid, current->comm);
+    
+    // Put the process to sleep until the flag becomes non-zero
+    wait_event_interruptible(wq, flag != 0);
+    
+    // Reset the flag to 0 after waking up
+    flag = 0;
+
+    // Log that the process has been awoken
+    printk(KERN_INFO "process %i (%s) awoken\n", current->pid, current->comm);
+
     if( copy_to_user(buf, kernel_buffer, mem_size) )
     {
         printk("Unable to read\n");
     }
+
     printk("Able to read\n");
     return mem_size;
 }
 
 ssize_t hello_write(struct file *filp, const char __user *buf, size_t len, loff_t *off)
-{
+{   
+    // Log the process ID and name that is about to wake up readers
+    printk(KERN_INFO "process %i (%s) awakening the readers...\n", current->pid, current->comm);
+
+    // Set the flag to 1 to wake up the sleeping processes
+    flag = 1;
+
+    // Wake up all processes sleeping on the wait queue
+    wake_up_interruptible(&wq);
+
     if( copy_from_user(kernel_buffer, buf, len) )
     {
         printk("Unable to write\n");
