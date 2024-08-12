@@ -39,7 +39,7 @@ ssize_t hello_read(struct file *filp, char __user *buf, size_t len, loff_t *off)
     // Log the process ID and name that is about to sleep
     printk(KERN_INFO "process %i (%s) going to sleep\n", current->pid, current->comm);
     
-    // Put the process to sleep until the flag becomes non-zero
+    // Put the process to sleep until the condition becomes true
     wait_event_interruptible(wq, flag != 0);
     
     // Reset the flag to 0 after waking up
@@ -59,6 +59,13 @@ ssize_t hello_read(struct file *filp, char __user *buf, size_t len, loff_t *off)
 
 ssize_t hello_write(struct file *filp, const char __user *buf, size_t len, loff_t *off)
 {   
+    if( copy_from_user(kernel_buffer, buf, len) )
+    {
+        printk("Unable to write\n");
+        return -EFAULT; // Or handle error appropriately
+    }
+    printk("able to write\n");
+
     // Log the process ID and name that is about to wake up readers
     printk(KERN_INFO "process %i (%s) awakening the readers...\n", current->pid, current->comm);
 
@@ -68,11 +75,6 @@ ssize_t hello_write(struct file *filp, const char __user *buf, size_t len, loff_
     // Wake up all processes sleeping on the wait queue
     wake_up_interruptible(&wq);
 
-    if( copy_from_user(kernel_buffer, buf, len) )
-    {
-        printk("Unable to write\n");
-    }
-    printk("able to write\n");
     return len;
 }
 
@@ -140,7 +142,7 @@ static int __init start_character(void)
      //require linux/fs.h header for this functions to work.
      ret = alloc_chrdev_region(&hello_char, 0, 1, "character_driver");
      if(ret != 0){
-            printk(KERN_WARNING"alloc_chrdev_region is failed!\n");
+            printk(KERN_WARNING "alloc_chrdev_region is failed!\n");
             return -1;
      }
 
@@ -148,7 +150,7 @@ static int __init start_character(void)
     //allocate the cdev structure
     my_cdev = cdev_alloc();
     if(!my_cdev){
-        printk(KERN_WARNING"cdev_alloc failed");
+        printk(KERN_WARNING "cdev_alloc failed");
         return -1;
     }
 
@@ -164,21 +166,21 @@ static int __init start_character(void)
     //Create struct class
     my_cdev_class =  class_create(THIS_MODULE, "my_cdev_class");
     if(!my_cdev_class){
-        printk(KERN_WARNING,"class create failed");
+        printk(KERN_WARNING "class create failed");
         return -1;
     }
 
     //Create a device node
     my_cdev_device = device_create(my_cdev_class, NULL, hello_char, NULL, "my_cdev");
     if(IS_ERR(my_cdev_device)){
-        printk(KERN_WARNING"device create failed\n");
+        printk(KERN_WARNING "device create failed\n");
         return -1;
     }
 
     //Allocating memory for kernel_buffer from kernel ram (linux/slab.h)
     kernel_buffer = kmalloc(mem_size, GFP_KERNEL);
     if(!kernel_buffer){
-        printk(KERN_WARNING"cannot allocate memory for kernel variable");
+        printk(KERN_WARNING "cannot allocate memory for kernel variable");
         return -1;
     }
 
@@ -190,8 +192,8 @@ static int __init start_character(void)
 
 static void __exit exit_character(void)
 {
-    //Destroy the device
-    device_destroy(my_cdev_class,my_cdev_device);
+    //Destroy the device device_destroy(struct class *class,dev_t devt);
+    device_destroy(my_cdev_class, hello_char);
 
     //Destroy the class
     class_destroy(my_cdev_class);
