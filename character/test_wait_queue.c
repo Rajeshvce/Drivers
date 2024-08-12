@@ -31,6 +31,7 @@ int main() {
     if (pid == 0) {
         // Child process: Try to read from the device and go to sleep
         printf("Child process (PID %d) trying to read...\n", getpid());
+        sleep(2); // as it a test application to test the wait queue wait to make the writing operation
         if (read(fd, &read_val, sizeof(read_val)) < 0) {
             perror("Read failed");
         } else {
@@ -40,7 +41,7 @@ int main() {
         return 0;
     } else {
         // Parent process: Sleep briefly to ensure child sleeps first, then write
-        sleep(2); // Ensure the child has time to sleep
+        //sleep(2); // Ensure the child has time to sleep
         printf("Parent process (PID %d) writing to wake up the child...\n", getpid());
         if (write(fd, &write_val, sizeof(write_val)) < 0) {
             perror("Write failed");

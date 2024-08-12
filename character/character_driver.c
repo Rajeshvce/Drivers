@@ -40,10 +40,7 @@ ssize_t hello_read(struct file *filp, char __user *buf, size_t len, loff_t *off)
     printk(KERN_INFO "process %i (%s) going to sleep\n", current->pid, current->comm);
     
     // Put the process to sleep until the condition becomes true
-    wait_event_interruptible(wq, flag != 0);
-    
-    // Reset the flag to 0 after waking up
-    flag = 0;
+    wait_event_interruptible(wq, flag == 0);
 
     // Log that the process has been awoken
     printk(KERN_INFO "process %i (%s) awoken\n", current->pid, current->comm);
@@ -51,6 +48,7 @@ ssize_t hello_read(struct file *filp, char __user *buf, size_t len, loff_t *off)
     if( copy_to_user(buf, kernel_buffer, mem_size) )
     {
         printk("Unable to read\n");
+        return -EFAULT; // or handle error appropriately
     }
 
     printk("Able to read\n");
@@ -59,6 +57,9 @@ ssize_t hello_read(struct file *filp, char __user *buf, size_t len, loff_t *off)
 
 ssize_t hello_write(struct file *filp, const char __user *buf, size_t len, loff_t *off)
 {   
+    //set the flag to 1 to inhibit the reading 
+    flag = 1;
+
     if( copy_from_user(kernel_buffer, buf, len) )
     {
         printk("Unable to write\n");
@@ -69,8 +70,8 @@ ssize_t hello_write(struct file *filp, const char __user *buf, size_t len, loff_
     // Log the process ID and name that is about to wake up readers
     printk(KERN_INFO "process %i (%s) awakening the readers...\n", current->pid, current->comm);
 
-    // Set the flag to 1 to wake up the sleeping processes
-    flag = 1;
+    // Set the flag to 0 to wake up the sleeping processes
+    flag = 0;
 
     // Wake up all processes sleeping on the wait queue
     wake_up_interruptible(&wq);
