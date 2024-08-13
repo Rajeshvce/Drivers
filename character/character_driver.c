@@ -7,6 +7,7 @@
 #include <linux/ioctl.h>
 #include <linux/wait.h>     // For wait queues
 #include <linux/sched.h>    // For current process info and sleep functions
+#include <linux/delay.h>
 
 #define mem_size 1024
 #define READ_CHARACTER_DRIVER  _IOR('c','1', int*)
@@ -18,6 +19,9 @@ static dev_t hello_char;
 static struct device *my_cdev_device;
 char *kernel_buffer;
 int val = 0;
+
+//define a semaphore to enable single read only
+struct semaphore limit_sem;
 
 // Declare and initialize a wait queue
 static DECLARE_WAIT_QUEUE_HEAD(wq);
@@ -56,7 +60,15 @@ ssize_t hello_read(struct file *filp, char __user *buf, size_t len, loff_t *off)
 }
 
 ssize_t hello_write(struct file *filp, const char __user *buf, size_t len, loff_t *off)
-{   
+{
+    //allow only one process to write at a time
+    if (down_interruptible(&limit_sem)) {  // Acquire semaphore
+        return -ERESTARTSYS;
+    }
+    
+    // Simulate a delay to test semaphore protection
+    msleep(5000);  // Sleep for 5000 milliseconds (5 seconds)   
+
     //set the flag to 1 to inhibit the reading 
     flag = 1;
 
@@ -75,6 +87,9 @@ ssize_t hello_write(struct file *filp, const char __user *buf, size_t len, loff_
 
     // Wake up all processes sleeping on the wait queue
     wake_up_interruptible(&wq);
+    
+    //release the semaphore
+    up(&limit_sem);
 
     return len;
 }
@@ -186,6 +201,9 @@ static int __init start_character(void)
     }
 
     strcpy(kernel_buffer, "Hello_world");
+
+    //initialize a semaphore
+    sema_init(&limit_sem, 1);
 
     printk("Character driver initialization successfull!\n");
         return 0;
