@@ -180,7 +180,7 @@ static int __init start_character(void)
     cdev_add(my_cdev, hello_char, 1);
 
     //Create struct class
-    my_cdev_class =  class_create(THIS_MODULE, "my_cdev_class");
+    my_cdev_class =  class_create("my_cdev_class");
     if(!my_cdev_class){
         printk(KERN_WARNING "class create failed");
         return -1;
