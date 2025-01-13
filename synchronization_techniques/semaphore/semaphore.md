@@ -164,6 +164,17 @@ This method initializes the semaphore at the run time, providing the flexibility
 struct semaphore name;
 sema_init(&name, initial_value);
 ```
+
+### API's provided by the Linux kernel to modify the semaphore
+
+```
+void down(struct semaphore *sem);
+void up(struct semaphore *sem);
+int  down_interruptible(struct semaphore *sem);
+int  down_killable(struct semaphore *sem);
+int  down_trylock(struct semaphore *sem);
+int  down_timeout(struct semaphore *sem, long jiffies);
+```
     
 ## Uses of Semaphores
 
