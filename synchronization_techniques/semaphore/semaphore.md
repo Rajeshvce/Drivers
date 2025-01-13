@@ -142,6 +142,29 @@ struct semaphore {
 * count - amount available resources;
 * wait_list - list of processes which are waiting to acquire a lock.
 
+### Initializing the semaphore
+
+We can initialize the semaphore in two ways
+
+1. Static method
+2. Dynamic method
+
+#### Static Method
+
+This method will be useful while using the global Semaphore. The Macro is defined below
+```
+// This call defines and initializes the sempahore
+DEFINE_MUTEX(name);
+```
+
+#### Dynamic Method
+
+This method initializes the semaphore at the run time, providing the flexibility for different scenarios
+```
+struct semaphore name;
+sema_init(&name, initial_value);
+```
+    
 ## Uses of Semaphores
 
 * **Mutual Exclusion :** Semaphore ensures that only one process accesses a shared resource at a time.
@@ -149,3 +172,21 @@ struct semaphore {
 * **Resource Management :** Limits access to a finite set of resources, like printers, devices, etc.
 * **Reader-Writer Problem :** Allows multiple readers but restricts the writers until no reader is present.
 * **Avoiding Deadlocks :** Prevents deadlocks by controlling the order of allocation of resources.
+
+## Advantages
+
+* Flexible resource management is possible with the help of semaphores.
+* Semaphores can be programmed in machine-independent codes of the microkernel.
+* Multiple processes cannot be entered in the critical section of Semaphores.
+* They permit more than one thread access to the crucial section.
+* Semaphores strictly follow the mutual exclusion principle, making them more efficient than other methods of synchronization.
+* There is no waste of resources due to busy waiting in semaphores. The processor does not waste time unnecessarily in checking if there are any conditions that will allow access to the critical section.
+
+## Disadvantages
+
+* Semaphores can lead to priority inversion, whereby low priority processes might access the critical sections first while high priority processes may access it later. This is one of the greatest limitations.
+* The Wait and Signal operations must be performed in the correct order to avoid semaphore deadlocks.
+* It is not practical to use semaphores on a large scale. This is because their use results in loss of modularity. This happens because wait() and signal() operations stop the creation of a structured layout for the system.
+* They are not required to be used, but they are agreed upon.
+* Unsanctioned use can cause a process to block indefinitely. This is known asDeadlock. In the next lessons, we will discuss deadlocks in greater detail.
+
