@@ -1,6 +1,7 @@
 # SPINLOCK
 
-Spinlock is a synchronization mechanism used in operating systems to protect shared resources from single access by multiple threads or processes. Unlike other synchronization methods such as semaphores or mutexes, spinlocks use a busy-wait method, where a thread continuously selects a lock until it becomes available. It is used in interrupt context things.
+Spinlock is a synchronization mechanism used in operating systems to protect shared resources from single access by multiple threads or processes. Unlike other synchronization methods such as semaphores or mutexes, spinlocks use a busy-wait method, where a thread continuously selects a lock until it becomes available. 
+Spinlocks may be used in code that cannot sleep, such as interrupt handlers.
 
 **Example code to understand the spinlock**
 ```
@@ -42,8 +43,8 @@ int unlock(lock)
 ### Initialization
 
 We can initialize the SpinLock in Linux Kernel in two ways
-    1. Static Method
-    2. Dynamic Method
+1. Static Method
+2. Dynamic Method
 
 #### Static Method
 
@@ -112,6 +113,7 @@ spin_unlock_irqrestore( spinlock_t *lock, unsigned long flags );
 
 2. **Not Suitable for Single Processor Systems:**  
    In single-core environments, they can lead to deadlocks because the thread holding the lock cannot release it while another thread is spinning.
+    (Since only one thread can run at a time)
 
 3. **No Priority Handling:**  
    Spinlocks do not provide any mechanism for priority inheritance or fairness, potentially leading to priority inversion.

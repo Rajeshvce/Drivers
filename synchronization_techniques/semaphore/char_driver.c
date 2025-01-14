@@ -68,10 +68,13 @@ static ssize_t char_dev_read(struct file *file, char *buf, size_t lbuf, loff_t *
 	/* Testing for accidental release */
 	// accidental_release();
 	printk(KERN_INFO "process %i (%s) going to sleep\n", current->pid, current->comm);	
-
+	
+	/* if the condition is returning the non-zero value that means an interrupt is called. */ 
 	if(down_interruptible (&mysem)){
 		printk(KERN_INFO "process %i woken up by a signal\n", current->pid);
-		return - ERESTARTSYS;
+		/* Upon seeing this return code, the higher layers of the kernel will either
+		  restart the call from the beginning or return the error to the user.*/
+		return - ERESTARTSYS; 
 	}
 	
 	printk(KERN_INFO "process %i (%s) resuming \n", current->pid, current->comm);	
